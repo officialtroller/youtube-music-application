@@ -1,22 +1,17 @@
-# .github/workflows/build.yml
 name: Build Electron App
 
 on:
   push:
-    branches: [ main ]  # or whatever your default branch is
+    branches: [ main ]
   pull_request:
     branches: [ main ]
-  # Allows you to run workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest]
-    
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -30,22 +25,47 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build Electron Mac app
-        run: dist-mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build Electron Windows app
+      - name: Build Electron app for Windows
         run: dist-win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifacts
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.os }}-build
+          name: windows-build
+          path: |
+            dist/*.exe
+            dist/*.zip
+          if-no-files-found: ignore
+
+  build-macos:
+    name: Build on macOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Electron app for macOS
+        run: dist-mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-build
           path: |
             dist/*.dmg
-            dist/*.exe
             dist/*.zip
           if-no-files-found: ignore
