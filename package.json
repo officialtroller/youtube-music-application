@@ -1,6 +1,6 @@
 {
-  "name": "youtube-app",
-  "version": "1.0.0",
+  "name": "youtube-music",
+  "version": "1.1.0",
   "description": "Youtube App with Discord RPC",
   "main": "index.js",
   "scripts": {
@@ -33,8 +33,8 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.officialtroller.youtube-app",
-    "productName": "Youtube App",
+    "appId": "com.officialtroller.youtube-music",
+    "productName": "Youtube Music",
     "files": [
       "node_modules/",
       "index.js",
@@ -43,31 +43,6 @@
       "index.css",
       "preload.js"
     ],
-    "mac": {
-      "category": "public.app-category.utilities",
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "icon": "icon.icns",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "darkModeSupport": true
-    },
-    "dmg": {
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
-    },
     "win": {
       "target": [
         "nsis"

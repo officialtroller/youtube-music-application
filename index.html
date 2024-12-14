@@ -21,25 +21,15 @@
             -webkit-app-region: drag;
         }
 
-        #window-controls {
-            display: flex;
-            margin-right: 10px;
-        }
-
         #window-controls button {
             width: 40px;
             height: 30px;
             background: none;
             border: none;
-            color: white;
             cursor: pointer;
             font-size: 14px;
             -webkit-app-region: no-drag;
             transition: background-color 0.2s;
-        }
-
-        #window-controls button:hover {
-            background-color: #3A3C42;
         }
 
         #close {
@@ -49,6 +39,16 @@
         #close:hover {
             background-color: #FF5F57;
             color: white;
+        }
+
+        #maximize,
+        #minimize {
+            color: white;
+        }
+
+        #maximize:hover,
+        #minimize:hover {
+            background-color: #3A3C42;
         }
 
         #content {

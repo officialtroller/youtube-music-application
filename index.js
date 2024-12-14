@@ -21,7 +21,7 @@ async function createWindow() {
         height: 720,
         fullscreen: true,
         frame: false,
-        icon: process.platform === 'darwin' ? path.join(__dirname, 'icon.icns') : path.join(__dirname, 'icon.ico'),
+        icon: path.join(__dirname, 'icon.ico'),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -52,6 +52,7 @@ async function initApp() {
 
 app.whenReady().then(async () => {
     initApp();
+
     await mainWindow.webContents.executeJavaScript("const webview = document.querySelector('webview');")
 
     ipcMain.on('window-minimize', () => {
@@ -70,6 +71,11 @@ app.whenReady().then(async () => {
     globalShortcut.register('F11', () => {
         const isFullScreen = mainWindow.isFullScreen();
         mainWindow.setFullScreen(!isFullScreen);
+    });
+    globalShortcut.register('Ctrl+Alt+Shift+N', async () => {
+        log('Global shortcut Ctrl+Alt+Shift+N triggered.');
+
+        await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");`)
     });
 });
 
