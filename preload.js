@@ -41,4 +41,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         }
     });
+
+    const updateStatus = document.getElementById('update-status');
+    ipcRenderer.on('update-status', (event, text, color) => {
+        updateStatus.textContent = text;
+        updateStatus.style.display = 'block';
+        updateStatus.style.borderRight = `2px solid ${color}`;
+
+        setTimeout(() => {
+            updateStatus.style.opacity = '0';
+            setTimeout(() => {
+                updateStatus.style.display = 'none';
+                updateStatus.style.opacity = '1';
+            }, 300);
+        }, 5000);
+    });
 });

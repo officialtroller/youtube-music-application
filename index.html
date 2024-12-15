@@ -30,6 +30,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            user-select: none;
         }
 
         .title-bar-icon {
@@ -40,6 +41,7 @@
         #window-controls {
             display: flex;
             -webkit-app-region: no-drag;
+            user-select: none;
         }
 
         #window-controls button {
@@ -87,6 +89,20 @@
             animation: spin 1s linear infinite;
         }
 
+        #update-status {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            font-size: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            z-index: 1001;
+            display: none;
+            transition: opacity 0.3s;
+        }
+
         @keyframes spin {
             0% {
                 transform: rotate(0deg);
@@ -127,6 +143,7 @@
     <div id="content">
         <webview src="https://music.youtube.com/" allowpopups partition="persist:youtubemusic"></webview>
     </div>
+    <div id="update-status"></div>
     <script src="preload.js"></script>
 </body>
 
