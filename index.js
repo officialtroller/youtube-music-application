@@ -1,5 +1,5 @@
 const { app, BrowserWindow, globalShortcut, shell, ipcMain } = require('electron');
-const { autoUpdater, AppUpdater } = require('electron-updater');
+const { autoUpdater } = require('electron-updater');
 const DiscordRPC = require('discord-rpc');
 const path = require('path');
 const fs = require('fs');
@@ -9,6 +9,41 @@ const rpc = new DiscordRPC.Client({ transport: 'ipc' });
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
+
+let autoUpdateEnabled = false;
+let skipKeyEnabled = false;
+
+ipcMain.on('set-auto-update', (event, enabled) => {
+    autoUpdateEnabled = enabled;
+    if (autoUpdateEnabled) {
+        autoUpdater.checkForUpdates();
+    }
+});
+
+ipcMain.on('set-skip-key', (event, enabled) => {
+    skipKeyEnabled = enabled;
+    if (skipKeyEnabled) {
+        registerSkipKey();
+    } else {
+        unregisterSkipKey();
+    }
+});
+
+ipcMain.on('toggle-fullscreen', () => {
+    const isFullScreen = mainWindow.isFullScreen();
+    mainWindow.setFullScreen(!isFullScreen);
+});
+
+function registerSkipKey() {
+    globalShortcut.register('Ctrl+Alt+Shift+N', async () => {
+        log('Global shortcut Ctrl+Alt+Shift+N triggered.');
+        await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");`);
+    });
+}
+
+function unregisterSkipKey() {
+    globalShortcut.unregister('Ctrl+Alt+Shift+N');
+}
 
 autoUpdater.on('checking-for-update', () => {
     sendStatusToWindow('Checking for updates...');
@@ -37,7 +72,7 @@ autoUpdater.on('update-downloaded', (info) => {
 });
 
 setInterval(() => {
-    if (app.isPackaged) autoUpdater.checkForUpdates();
+    if (app.isPackaged && autoUpdateEnabled) autoUpdater.checkForUpdates();
 }, 60 * 60 * 1000);
 
 function sendStatusToWindow(text, style) {
@@ -50,7 +85,7 @@ function sendStatusToWindow(text, style) {
 let mainWindow;
 
 function log(message) {
-    console.log(`[${ new Date().toISOString() }] ${ message }`);
+    console.log(`[${new Date().toISOString()}] ${message}`);
 }
 
 async function createWindow() {
@@ -77,7 +112,7 @@ async function createWindow() {
     });
 
     log('Window created and configured successfully.');
-    if (app.isPackaged) autoUpdater.checkForUpdates();
+    if (app.isPackaged && autoUpdateEnabled) autoUpdater.checkForUpdates();
 }
 
 async function initApp() {
@@ -86,7 +121,7 @@ async function initApp() {
         initDiscord();
         log('Application initialized successfully.');
     } catch (error) {
-        log(`Error during initialization: ${ error.message }`);
+        log(`Error during initialization: ${error.message}`);
     }
 }
 
@@ -111,7 +146,7 @@ app.whenReady().then(async () => {
         log('Global shortcut Ctrl+Alt+Shift+N triggered.');
 
         await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");`)
-});
+    });
 });
 
 app.on('window-all-closed', () => {
@@ -129,7 +164,7 @@ function initDiscord() {
 
         setInterval(updatePresence, 1000);
     });
-    rpc.login({ clientId }).catch(error => log(`Discord RPC login error: ${ error.message }`));
+    rpc.login({ clientId }).catch(error => log(`Discord RPC login error: ${error.message}`));
 }
 
 async function updatePresence() {
@@ -151,13 +186,13 @@ async function updatePresence() {
 
         rpc.setActivity({
             details: title,
-            state: `By ${ artist }`,
+            state: `By ${artist}`,
             largeImageKey: 'icon_512',
             largeImageText: artist,
-            smallImageKey: isPlaying ? "play" : "pause",
+            smallImageKey: isPlaying ? "play2" : "pause2",
             smallImageText: isPlaying ? "Playing" : "Paused"
-        }).catch (console.error);
-} catch (error) {
-    console.error(error);
-}
+        }).catch(console.error);
+    } catch (error) {
+        console.error(error);
+    }
 }
