@@ -29,11 +29,6 @@ ipcMain.on('set-skip-key', (event, enabled) => {
     }
 });
 
-ipcMain.on('toggle-fullscreen', () => {
-    const isFullScreen = mainWindow.isFullScreen();
-    mainWindow.setFullScreen(!isFullScreen);
-});
-
 function registerSkipKey() {
     globalShortcut.register('Ctrl+Alt+Shift+N', async () => {
         log('Global shortcut Ctrl+Alt+Shift+N triggered.');
@@ -47,28 +42,28 @@ function unregisterSkipKey() {
 
 autoUpdater.on('checking-for-update', () => {
     sendStatusToWindow('Checking for updates...');
-    console.log("Checking for updates");
+    console.log('Checking for updates');
 });
 
-autoUpdater.on('update-available', (info) => {
-    sendStatusToWindow('Update available. Downloading...', "yellow");
+autoUpdater.on('update-available', info => {
+    sendStatusToWindow('Update available. Downloading...', 'yellow');
     autoUpdater.downloadUpdate();
-    console.log("Download is there");
+    console.log('Download is there');
 });
 
-autoUpdater.on('update-not-available', (info) => {
-    sendStatusToWindow('App is up-to-date.', "green");
-    console.log("Update not there");
+autoUpdater.on('update-not-available', info => {
+    sendStatusToWindow('App is up-to-date.', 'green');
+    console.log('Update not there');
 });
 
-autoUpdater.on('download-progress', (progressObj) => {
-    sendStatusToWindow(`Downloading Update...${Math.round(progressObj.percent)} %`, "yellow");
-    console.log("Downloading update");
+autoUpdater.on('download-progress', progressObj => {
+    sendStatusToWindow(`Downloading Update...${Math.round(progressObj.percent)} %`, 'yellow');
+    console.log('Downloading update');
 });
 
-autoUpdater.on('update-downloaded', (info) => {
-    sendStatusToWindow('Update downloaded. Will install on restart.', "green");
-    console.log("Update installed");
+autoUpdater.on('update-downloaded', info => {
+    sendStatusToWindow('Update downloaded. Will install on restart.', 'green');
+    console.log('Update installed');
 });
 
 setInterval(() => {
@@ -78,7 +73,7 @@ setInterval(() => {
 function sendStatusToWindow(text, style) {
     if (mainWindow) {
         mainWindow.webContents.send('update-status', text, style);
-        console.log("Function triggered!!!!!!!!!!" + text + style);
+        console.log('Function triggered!!!!!!!!!!' + text + style);
     }
 }
 
@@ -99,8 +94,8 @@ async function createWindow() {
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
-            webviewTag: true
-        }
+            webviewTag: true,
+        },
     });
     mainWindow.loadFile('index.html');
 
@@ -128,7 +123,7 @@ async function initApp() {
 app.whenReady().then(async () => {
     initApp();
 
-    await mainWindow.webContents.executeJavaScript("const webview = document.querySelector('webview');")
+    await mainWindow.webContents.executeJavaScript("const webview = document.querySelector('webview');");
 
     ipcMain.on('window-minimize', () => {
         mainWindow.minimize();
@@ -145,7 +140,7 @@ app.whenReady().then(async () => {
     globalShortcut.register('Ctrl+Alt+Shift+N', async () => {
         log('Global shortcut Ctrl+Alt+Shift+N triggered.');
 
-        await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");`)
+        await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");`);
     });
 });
 
@@ -171,26 +166,27 @@ async function updatePresence() {
     if (!rpc || !mainWindow) return;
 
     try {
-        const title = await mainWindow.webContents.executeJavaScript(
-            `webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.title')?.textContent || 'Unknown Title'");`
-        );
+        const title = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.title')?.textContent || 'Unknown Title'");`);
 
-        const artistdata = await mainWindow.webContents.executeJavaScript(
-            `webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.byline')?.textContent || 'Unknown Artist'");`
-        );
+        const artistdata = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.byline')?.textContent || 'Unknown Artist'");`);
 
         const artist = artistdata.split('•')[0].trim().replace(/"/g, '');
-        const isPlaying = await mainWindow.webContents.executeJavaScript(
-            `webview?.executeJavaScript("!document.querySelector('video').paused");`
-        );
+        const isPlaying = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("!document.querySelector('video').paused");`);
+
+        const url = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.image')?.src || 'icon_512'");`);
+
+        const currentTime = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('video')?.currentTime || 0");`);
+
+        const startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : null;
 
         rpc.setActivity({
             details: title,
             state: `By ${artist}`,
-            largeImageKey: 'icon_512',
+            largeImageKey: url,
             largeImageText: artist,
-            smallImageKey: isPlaying ? "play2" : "pause2",
-            smallImageText: isPlaying ? "Playing" : "Paused"
+            smallImageKey: isPlaying ? undefined : 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
+            smallImageText: isPlaying ? undefined : 'Paused',
+            startTimestamp: startTimestamp,
         }).catch(console.error);
     } catch (error) {
         console.error(error);
