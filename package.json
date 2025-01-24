@@ -1,61 +1,63 @@
 {
-  "name": "youtube-music",
-  "version": "1.1.0",
-  "description": "Youtube App with Discord RPC",
-  "main": "index.js",
-  "scripts": {
-    "test": "node .",
-    "start": "electron .",
-    "pack-mac": "electron-builder --mac --dir",
-    "pack-win": "electron-builder --win --dir",
-    "dist-mac": "electron-builder --mac",
-    "dist-win": "electron-builder --win",
-    "dist": "electron-builder -mw"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/officialtroller/youtube-music-application.git"
-  },
-  "keywords": [
-    "Youtube",
-    "Electron",
-    "Discord",
-    "RPC"
-  ],
-  "author": "official_troller",
-  "license": "ISC",
-  "dependencies": {
-    "discord-rpc": "^4.0.1",
-    "electron-log": "^5.1.7"
-  },
-  "devDependencies": {
-    "electron": "^32.1.2",
-    "electron-builder": "^24.13.3"
-  },
-  "build": {
-    "appId": "com.officialtroller.youtube-music",
-    "productName": "Youtube Music",
-    "files": [
-      "node_modules/",
-      "index.js",
-      "package.json",
-      "index.html",
-      "index.css",
-      "preload.js"
-    ],
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "icon": "icon.ico"
+    "name": "youtube-music",
+    "version": "2.0.0",
+    "description": "Youtube App with Discord RPC",
+    "main": "index.js",
+    "scripts": {
+        "test": "node .",
+        "start": "electron .",
+        "pack-mac": "electron-builder --mac --dir",
+        "pack-win": "electron-builder --win --dir",
+        "dist-mac": "electron-builder --mac",
+        "dist-win": "electron-builder --win",
+        "dist": "electron-builder -mw"
     },
-    "nsis": {
-      "oneClick": false,
-      "installerIcon": "icon.ico",
-      "uninstallerIcon": "icon.ico",
-      "uninstallDisplayName": "Uninstaller",
-      "license": "license.md",
-      "allowToChangeInstallationDirectory": true
+    "repository": "https://github.com/officialtroller/youtube-music-application",
+    "publish": {
+        "provider": "github",
+        "releaseType": "release"
+    },
+    "keywords": [
+        "Youtube",
+        "Electron",
+        "Discord",
+        "RPC"
+    ],
+    "author": "official_troller",
+    "license": "ISC",
+    "dependencies": {
+        "discord-rpc": "^4.0.1",
+        "electron-updater": "^6.3.9"
+    },
+    "devDependencies": {
+        "electron": "^32.1.2",
+        "electron-builder": "^24.13.3"
+    },
+    "build": {
+        "appId": "com.officialtroller.youtube-music",
+        "productName": "Youtube Music",
+        "files": [
+            "node_modules/",
+            "index.js",
+            "package.json",
+            "index.html",
+            "index.css",
+            "preload.js",
+            "icon.png"
+        ],
+        "win": {
+            "target": [
+                "nsis"
+            ],
+            "icon": "icon.ico"
+        },
+        "nsis": {
+            "oneClick": false,
+            "installerIcon": "icon.ico",
+            "uninstallerIcon": "icon.ico",
+            "uninstallDisplayName": "Uninstaller",
+            "license": "license.md",
+            "allowToChangeInstallationDirectory": true
+        }
     }
-  }
 }
