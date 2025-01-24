@@ -11,7 +11,6 @@ autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let autoUpdateEnabled = false;
-let skipKeyEnabled = false;
 
 ipcMain.on('set-auto-update', (event, enabled) => {
     autoUpdateEnabled = enabled;
@@ -200,7 +199,6 @@ async function updatePresence() {
         const artistdata = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.byline')?.textContent || 'Unknown Artist'");`);
 
         const artist = artistdata.split('•')[0].trim().replace(/"/g, '');
-        const album = artistdata.split('•')[1].trim().replace(/"/g, '');
         const isPlaying = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("!document.querySelector('video').paused");`);
 
         const url = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.image')?.getAttribute('src') || 'icon_512'");`);
@@ -213,7 +211,7 @@ async function updatePresence() {
             details: title,
             state: `By ${artist}`,
             largeImageKey: url,
-            largeImageText: album,
+            largeImageText: artist,
             smallImageKey: isPlaying ? undefined : 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
             smallImageText: isPlaying ? undefined : 'Paused',
             startTimestamp: startTimestamp,

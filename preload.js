@@ -519,12 +519,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const updateStatus = document.getElementById('update-status');
+    let timeoutId = null;
+
     ipcRenderer.on('update-status', (event, text, color) => {
         updateStatus.textContent = text;
         updateStatus.style.display = 'block';
         updateStatus.style.borderRight = `2px solid ${color}`;
 
-        setTimeout(() => {
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+        }
+
+        timeoutId = setTimeout(() => {
             updateStatus.style.opacity = '0';
             setTimeout(() => {
                 updateStatus.style.display = 'none';
