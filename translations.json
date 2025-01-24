@@ -1,0 +1,44 @@
+{
+    "Settings": {
+        "de": "Einstellungen",
+        "ru": "Настройки",
+        "fr": "Réglages",
+        "es": "Ajustes",
+        "zh": "设置"
+    },
+    "Auto-Update": {
+        "de": "Auto-Update",
+        "ru": "Автообновление",
+        "fr": "Mise à jour auto",
+        "es": "Autoactualización",
+        "zh": "自动更新"
+    },
+    "Language": {
+        "de": "Sprache",
+        "ru": "Язык",
+        "fr": "Langue",
+        "es": "Lengua",
+        "zh": "语 言"
+    },
+    "Skip Song": {
+        "de": "Song überspringen",
+        "ru": "Скип Сонг",
+        "fr": "Skip Song",
+        "es": "Skip Song",
+        "zh": "跳过歌"
+    },
+    "Previous Song": {
+        "de": "Vorheriger Song",
+        "ru": "Предыдущая песня",
+        "fr": "Chant précédent",
+        "es": "Canción anterior",
+        "zh": "上一首歌"
+    },
+    "Pause Song": {
+        "de": "Song pausieren",
+        "ru": "Приостановить песню",
+        "fr": "Pause Song",
+        "es": "Pausar canción",
+        "zh": "暂停歌曲"
+    }
+}

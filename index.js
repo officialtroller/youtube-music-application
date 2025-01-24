@@ -20,25 +20,9 @@ ipcMain.on('set-auto-update', (event, enabled) => {
     }
 });
 
-ipcMain.on('set-skip-key', (event, enabled) => {
-    skipKeyEnabled = enabled;
-    if (skipKeyEnabled) {
-        registerSkipKey();
-    } else {
-        unregisterSkipKey();
-    }
+ipcMain.on('check-for-updates', () => {
+    autoUpdater.checkForUpdates();
 });
-
-function registerSkipKey() {
-    globalShortcut.register('Ctrl+Alt+Shift+N', async () => {
-        log('Global shortcut Ctrl+Alt+Shift+N triggered.');
-        await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");`);
-    });
-}
-
-function unregisterSkipKey() {
-    globalShortcut.unregister('Ctrl+Alt+Shift+N');
-}
 
 autoUpdater.on('checking-for-update', () => {
     sendStatusToWindow('Checking for updates...');
@@ -135,17 +119,62 @@ app.whenReady().then(async () => {
     });
 
     ipcMain.on('window-close', () => {
-        mainWindow.close();
+        mainWindow.close(), rpc.destroy();
     });
-    globalShortcut.register('Ctrl+Alt+Shift+N', async () => {
-        log('Global shortcut Ctrl+Alt+Shift+N triggered.');
+    const registeredShortcuts = {};
 
-        await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");`);
+    ipcMain.on('set-hotkey', (event, { action, enabled, hotkey }) => {
+        if (!enabled) {
+            unregisterHotkey(action);
+            return;
+        }
+
+        if (registeredShortcuts[action]) {
+            globalShortcut.unregister(registeredShortcuts[action]);
+        }
+
+        const success = globalShortcut.register(hotkey, async () => {
+            console.log(`Global shortcut for ${action} triggered: ${hotkey}`);
+            switch (action) {
+                case 'skip':
+                    await mainWindow.webContents.executeJavaScript(`
+                        webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");
+                    `);
+                    break;
+                case 'pause':
+                    await mainWindow.webContents.executeJavaScript(`
+                        webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.play-pause-button')?.click();");
+                    `);
+                    break;
+                case 'previous':
+                    await mainWindow.webContents.executeJavaScript(`
+                        webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.previous-button')?.click();");
+                    `);
+                    break;
+                default:
+                    console.error(`Unknown action: ${action}`);
+            }
+        });
+
+        if (!success) {
+            console.error(`Failed to register global shortcut for ${action}: ${hotkey}`);
+        } else {
+            console.log(`Global shortcut registered for ${action}: ${hotkey}`);
+            registeredShortcuts[action] = hotkey;
+        }
     });
+
+    function unregisterHotkey(action) {
+        if (registeredShortcuts[action]) {
+            globalShortcut.unregister(registeredShortcuts[action]);
+            console.log(`Global shortcut unregistered for ${action}: ${registeredShortcuts[action]}`);
+            delete registeredShortcuts[action];
+        }
+    }
 });
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin') app.quit(), rpc.destroy();
 });
 
 app.on('activate', function () {
@@ -171,24 +200,25 @@ async function updatePresence() {
         const artistdata = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.byline')?.textContent || 'Unknown Artist'");`);
 
         const artist = artistdata.split('•')[0].trim().replace(/"/g, '');
+        const album = artistdata.split('•')[1].trim().replace(/"/g, '');
         const isPlaying = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("!document.querySelector('video').paused");`);
 
-        const url = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.image')?.src || 'icon_512'");`);
+        const url = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.image')?.getAttribute('src') || 'icon_512'");`);
 
         const currentTime = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('video')?.currentTime || 0");`);
 
-        const startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : null;
+        const startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
 
         rpc.setActivity({
             details: title,
             state: `By ${artist}`,
             largeImageKey: url,
-            largeImageText: artist,
+            largeImageText: album,
             smallImageKey: isPlaying ? undefined : 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
             smallImageText: isPlaying ? undefined : 'Paused',
             startTimestamp: startTimestamp,
         }).catch(console.error);
     } catch (error) {
-        console.error(error);
+        console.error('An error occured while trying to set Activity: ' + error);
     }
 }
