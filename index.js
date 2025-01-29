@@ -208,13 +208,13 @@ async function updatePresence() {
         const startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
 
         rpc.setActivity({
-            details: title,
-            state: `By ${artist}`,
-            largeImageKey: url,
-            largeImageText: artist,
+            details: title ? title : undefined,
+            state: artist ? `By ${artist}` : undefined,
+            largeImageKey: url ? url : 'icon_512',
+            largeImageText: artist ? artist : undefined,
             smallImageKey: isPlaying ? undefined : 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
             smallImageText: isPlaying ? undefined : 'Paused',
-            startTimestamp: startTimestamp,
+            startTimestamp: isPlaying ? undefined : startTimestamp,
         }).catch(console.error);
     } catch (error) {
         console.error('An error occured while trying to set Activity: ' + error);
