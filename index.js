@@ -214,7 +214,7 @@ async function updatePresence() {
             largeImageText: artist ? artist : undefined,
             smallImageKey: isPlaying ? undefined : 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
             smallImageText: isPlaying ? undefined : 'Paused',
-            startTimestamp: isPlaying ? undefined : startTimestamp,
+            startTimestamp: startTimestamp,
         }).catch(console.error);
     } catch (error) {
         console.error('An error occured while trying to set Activity: ' + error);
