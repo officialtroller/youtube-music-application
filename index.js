@@ -189,7 +189,7 @@ function initDiscord() {
     });
     rpc.login({ clientId }).catch(error => log(`Discord RPC login error: ${error.message}`));
 }
-
+let lastTitle;
 async function updatePresence() {
     if (!rpc || !mainWindow) return;
 
@@ -205,7 +205,13 @@ async function updatePresence() {
 
         const currentTime = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('video')?.currentTime || 0");`);
 
-        const startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
+        let startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
+        if (title !== lastTitle) {
+            lastTitle = title;
+            startTimestamp = Math.floor(Date.now() / 1000);
+        } else {
+            startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
+        }
 
         rpc.setActivity({
             details: title ? title : undefined,

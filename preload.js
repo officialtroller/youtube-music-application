@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.appendChild(closebtn);
 
         const info = document.createElement('p');
-        info.textContent = '© official_troller V2.0.2';
+        info.textContent = '© official_troller V2.0.3';
         Object.assign(info.style, {
             position: 'absolute',
             color: '#B3B3B3',
