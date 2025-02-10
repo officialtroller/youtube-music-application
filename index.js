@@ -11,6 +11,7 @@ autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let autoUpdateEnabled = false;
+let skipKeyEnabled = false;
 
 ipcMain.on('set-auto-update', (event, enabled) => {
     autoUpdateEnabled = enabled;
@@ -189,7 +190,7 @@ function initDiscord() {
     });
     rpc.login({ clientId }).catch(error => log(`Discord RPC login error: ${error.message}`));
 }
-let lastTitle;
+
 async function updatePresence() {
     if (!rpc || !mainWindow) return;
 
@@ -199,25 +200,20 @@ async function updatePresence() {
         const artistdata = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.byline')?.textContent || 'Unknown Artist'");`);
 
         const artist = artistdata.split('•')[0].trim().replace(/"/g, '');
+        const album = artistdata.split('•')[1].trim().replace(/"/g, '');
         const isPlaying = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("!document.querySelector('video').paused");`);
 
         const url = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.image')?.getAttribute('src') || 'icon_512'");`);
 
         const currentTime = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('video')?.currentTime || 0");`);
 
-        let startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
-        if (title !== lastTitle) {
-            lastTitle = title;
-            startTimestamp = Math.floor(Date.now() / 1000);
-        } else {
-            startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
-        }
+        const startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
 
         rpc.setActivity({
-            details: title ? title : undefined,
-            state: artist ? `By ${artist}` : undefined,
-            largeImageKey: url ? url : 'icon_512',
-            largeImageText: artist ? artist : undefined,
+            details: title,
+            state: `By ${artist}`,
+            largeImageKey: url,
+            largeImageText: album,
             smallImageKey: isPlaying ? undefined : 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
             smallImageText: isPlaying ? undefined : 'Paused',
             startTimestamp: startTimestamp,
