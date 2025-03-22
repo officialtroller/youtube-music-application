@@ -11,7 +11,6 @@ autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 let autoUpdateEnabled = false;
-let skipKeyEnabled = false;
 
 ipcMain.on('set-auto-update', (event, enabled) => {
     autoUpdateEnabled = enabled;
@@ -181,44 +180,87 @@ app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
+const REFRESH_INTERVAL = 3000;
+let lastActivity = null;
+
 function initDiscord() {
     rpc.on('ready', () => {
         log('Discord RPC connected');
         updatePresence();
-
-        setInterval(updatePresence, 1000);
+        setInterval(updatePresence, REFRESH_INTERVAL);
     });
-    rpc.login({ clientId }).catch(error => log(`Discord RPC login error: ${error.message}`));
+
+    rpc.on('disconnected', () => {
+        log('Discord RPC disconnected, attempting reconnect...');
+        setTimeout(() => rpc.login({ clientId }), 5000);
+    });
+
+    rpc.login({ clientId }).catch(error => {
+        log(`Discord RPC login error: ${error.message}`);
+        setTimeout(() => initDiscord(), 10000);
+    });
+}
+
+async function getPlayerData() {
+    if (!mainWindow?.webContents) {
+        throw new Error('Main window not initialized');
+    }
+
+    const script = `
+        (() => {
+            const playerBar = document.querySelector('ytmusic-player-bar');
+            const video = document.querySelector('video');
+            if (!playerBar || !video) return null;
+            
+            const title = playerBar.querySelector('.title')?.textContent || 'Unknown Title';
+            const byline = playerBar.querySelector('.byline')?.textContent || 'Unknown Artist';
+            const [artist, album = 'Unknown Album'] = byline.split('•').map(s => s.trim().replace(/"/g, ''));
+            
+            return {
+                title,
+                artist,
+                album,
+                isPlaying: !video.paused,
+                currentTime: video.currentTime,
+                imageUrl: playerBar.querySelector('.image')?.getAttribute('src') || 'icon_512'
+            };
+        })()
+    `;
+
+    return await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript(\`${script}\`)`);
 }
 
 async function updatePresence() {
     if (!rpc || !mainWindow) return;
 
     try {
-        const title = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.title')?.textContent || 'Unknown Title'");`);
+        const playerData = await getPlayerData();
+        if (!playerData) return;
 
-        const artistdata = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.byline')?.textContent || 'Unknown Artist'");`);
+        let newActivity;
+        if (playerData.isPlaying) {
+            newActivity = {
+                details: playerData.title,
+                state: `By ${playerData.artist}`,
+                largeImageKey: playerData.imageUrl,
+                smallImageKey: undefined,
+                smallImageText: undefined,
+            };
+        } else {
+            newActivity = {
+                details: playerData.title,
+                state: `By ${playerData.artist}`,
+                largeImageKey: playerData.imageUrl,
+                smallImageKey: 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
+                smallImageText: 'Paused',
+            };
+        }
 
-        const artist = artistdata.split('•')[0].trim().replace(/"/g, '');
-        const album = artistdata.split('•')[1].trim().replace(/"/g, '');
-        const isPlaying = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("!document.querySelector('video').paused");`);
-
-        const url = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.image')?.getAttribute('src') || 'icon_512'");`);
-
-        const currentTime = await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript("document.querySelector('video')?.currentTime || 0");`);
-
-        const startTimestamp = isPlaying ? Math.floor(Date.now() / 1000) - Math.floor(currentTime) : undefined;
-
-        rpc.setActivity({
-            details: title,
-            state: `By ${artist}`,
-            largeImageKey: url,
-            largeImageText: album,
-            smallImageKey: isPlaying ? undefined : 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
-            smallImageText: isPlaying ? undefined : 'Paused',
-            startTimestamp: startTimestamp,
-        }).catch(console.error);
+        if (JSON.stringify(newActivity) !== JSON.stringify(lastActivity)) {
+            await rpc.setActivity(newActivity);
+            lastActivity = newActivity;
+        }
     } catch (error) {
-        console.error('An error occured while trying to set Activity: ' + error);
+        log(`RPC update error: ${error.message}`);
     }
 }
