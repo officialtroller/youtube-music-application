@@ -245,6 +245,7 @@ async function updatePresence() {
                 largeImageKey: playerData.imageUrl,
                 smallImageKey: undefined,
                 smallImageText: undefined,
+                type: 2,
             };
         } else {
             newActivity = {
@@ -253,6 +254,7 @@ async function updatePresence() {
                 largeImageKey: playerData.imageUrl,
                 smallImageKey: 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
                 smallImageText: 'Paused',
+                type: 2,
             };
         }
 
