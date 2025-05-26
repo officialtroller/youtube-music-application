@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.appendChild(closebtn);
 
         const info = document.createElement('p');
-        info.textContent = '© official_troller V2.1.0';
+        info.textContent = '© official_troller V2.1.1';
         Object.assign(info.style, {
             position: 'absolute',
             color: '#B3B3B3',
@@ -222,8 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pausedel.style.color = 'white';
         pausedel.style.boxShadow = '0 0 5px rgba(0, 0, 0, 0.5)';
         pausedel.addEventListener('click', () => {
-            localStorage.removeItem('previous');
-            prevhotkeyDisplay.textContent = 'Click to set hotkey';
+            localStorage.removeItem('pause');
+            pausehotkeyDisplay.textContent = 'Click to set hotkey';
             ipcRenderer.send('set-hotkey', {
                 action: 'pause',
                 enabled: false,

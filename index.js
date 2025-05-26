@@ -180,26 +180,14 @@ app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-const REFRESH_INTERVAL = 3000;
 let lastActivity = null;
-
-function initDiscord() {
-    rpc.on('ready', () => {
-        log('Discord RPC connected');
-        updatePresence();
-        setInterval(updatePresence, REFRESH_INTERVAL);
-    });
-
-    rpc.on('disconnected', () => {
-        log('Discord RPC disconnected, attempting reconnect...');
-        setTimeout(() => rpc.login({ clientId }), 5000);
-    });
-
-    rpc.login({ clientId }).catch(error => {
-        log(`Discord RPC login error: ${error.message}`);
-        setTimeout(() => initDiscord(), 10000);
-    });
-}
+let lastPlayerState = null;
+let presenceUpdateTimer = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const REFRESH_INTERVAL = 1000;
+const RECONNECT_DELAY = 5000;
+const IMAGE_CACHE = new Map();
 
 async function getPlayerData() {
     if (!mainWindow?.webContents) {
@@ -211,18 +199,32 @@ async function getPlayerData() {
             const playerBar = document.querySelector('ytmusic-player-bar');
             const video = document.querySelector('video');
             if (!playerBar || !video) return null;
-            
+
             const title = playerBar.querySelector('.title')?.textContent || 'Unknown Title';
             const byline = playerBar.querySelector('.byline')?.textContent || 'Unknown Artist';
-            const [artist, album = 'Unknown Album'] = byline.split('•').map(s => s.trim().replace(/"/g, ''));
             
+            const artist = byline.split('•')[0]?.trim().replace(/["']/g, '') || 'Unknown Artist';
+
+            const durationMs = Math.floor((video.duration || 0) * 1000);
+            const positionMs = Math.floor((video.currentTime || 0) * 1000);
+            const isPlaying = !video.paused && !video.ended;
+
+            let imageUrl = playerBar.querySelector('.image')?.getAttribute('src') || 'icon_512';
+            if (imageUrl.startsWith('data:')) {
+                imageUrl = 'icon_512';
+            } else if (imageUrl.includes('=w')) {
+                imageUrl = imageUrl.replace(/=w\d+/, '=w512');
+            }
+
             return {
-                title,
-                artist,
-                album,
-                isPlaying: !video.paused,
-                currentTime: video.currentTime,
-                imageUrl: playerBar.querySelector('.image')?.getAttribute('src') || 'icon_512'
+                title: title.trim(),
+                artist: artist.trim(),
+                isPlaying,
+                positionMs,
+                durationMs,
+                imageUrl,
+                playbackRate: video.playbackRate || 1.0,
+                isEnded: video.ended
             };
         })()
     `;
@@ -230,39 +232,173 @@ async function getPlayerData() {
     return await mainWindow.webContents.executeJavaScript(`webview?.executeJavaScript(\`${script}\`)`);
 }
 
+function calculateTimestamps(playerData) {
+    if (!playerData.isPlaying || playerData.durationMs <= 0) {
+        return { startTimestamp: undefined, endTimestamp: undefined };
+    }
+
+    const now = Date.now();
+    const remainingMs = playerData.durationMs - playerData.positionMs;
+
+    const startTimestamp = now - playerData.positionMs;
+
+    const endTimestamp = now + remainingMs;
+
+    return { startTimestamp, endTimestamp };
+}
+
+function shouldUpdatePresence(newData, oldData) {
+    if (!oldData) return true;
+
+    return (
+        newData.title !== oldData.title ||
+        newData.artist !== oldData.artist ||
+        newData.album !== oldData.album ||
+        newData.isPlaying !== oldData.isPlaying ||
+        newData.imageUrl !== oldData.imageUrl ||
+        Math.abs(newData.positionMs - oldData.positionMs) > 2000
+    );
+}
+
+async function processImageUrl(imageUrl) {
+    if (IMAGE_CACHE.has(imageUrl)) {
+        return IMAGE_CACHE.get(imageUrl);
+    }
+
+    let processedUrl = imageUrl;
+
+    if (imageUrl.includes('googleusercontent.com') || imageUrl.includes('ytimg.com')) {
+        processedUrl = imageUrl.split('=')[0] + '=s512-c-fcrop64=1,00005a57ffffa5a8-k-c0x00ffffff-no-nd-rj';
+    }
+
+    IMAGE_CACHE.set(imageUrl, processedUrl);
+
+    if (IMAGE_CACHE.size > 50) {
+        const firstKey = IMAGE_CACHE.keys().next().value;
+        IMAGE_CACHE.delete(firstKey);
+    }
+
+    return processedUrl;
+}
+
 async function updatePresence() {
     if (!rpc || !mainWindow) return;
 
     try {
         const playerData = await getPlayerData();
-        if (!playerData) return;
+        if (!playerData) {
+            if (lastActivity) {
+                await rpc.clearActivity();
+                lastActivity = null;
+                lastPlayerState = null;
+            }
+            return;
+        }
 
-        let newActivity;
-        if (playerData.isPlaying) {
-            newActivity = {
-                details: playerData.title,
-                state: `By ${playerData.artist}`,
-                largeImageKey: playerData.imageUrl,
-                smallImageKey: undefined,
-                smallImageText: undefined,
-                type: 2,
-            };
+        if (!shouldUpdatePresence(playerData, lastPlayerState)) {
+            return;
+        }
+
+        const { startTimestamp, endTimestamp } = calculateTimestamps(playerData);
+        const processedImageUrl = await processImageUrl(playerData.imageUrl);
+
+        let newActivity = {
+            details: playerData.title,
+            state: `by ${playerData.artist}`,
+            largeImageKey: processedImageUrl,
+            //largeImageText: playerData.artist,
+            type: 2,
+        };
+
+        if (playerData.isPlaying && !playerData.isEnded) {
+            newActivity.startTimestamp = startTimestamp;
+            newActivity.endTimestamp = endTimestamp;
+            newActivity.smallImageKey = undefined;
+            newActivity.smallImageText = undefined;
         } else {
-            newActivity = {
-                details: playerData.title,
-                state: `By ${playerData.artist}`,
-                largeImageKey: playerData.imageUrl,
-                smallImageKey: 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png',
-                smallImageText: 'Paused',
-                type: 2,
-            };
+            newActivity.smallImageKey = 'https://raw.githubusercontent.com/officialtroller/youtube-music-application/refs/heads/main/paus.png';
+            newActivity.smallImageText = playerData.isEnded ? 'Ended' : 'Paused';
         }
 
-        if (JSON.stringify(newActivity) !== JSON.stringify(lastActivity)) {
+        const activityChanged = JSON.stringify(newActivity) !== JSON.stringify(lastActivity);
+
+        if (activityChanged) {
             await rpc.setActivity(newActivity);
-            lastActivity = newActivity;
+            lastActivity = { ...newActivity };
+            log(`RPC updated: ${playerData.title} by ${playerData.artist} (${playerData.isPlaying ? 'playing' : 'paused'})`);
         }
+
+        lastPlayerState = { ...playerData };
+        reconnectAttempts = 0;
     } catch (error) {
         log(`RPC update error: ${error.message}`);
+
+        if (error.message.includes('RPC') || error.message.includes('connection')) {
+            handleDisconnection();
+        }
     }
+}
+
+function handleDisconnection() {
+    if (presenceUpdateTimer) {
+        clearInterval(presenceUpdateTimer);
+        presenceUpdateTimer = null;
+    }
+
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        log(`Discord RPC disconnected, attempting reconnect ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}...`);
+
+        setTimeout(() => {
+            initDiscord();
+        }, RECONNECT_DELAY * reconnectAttempts);
+    } else {
+        log('Max reconnection attempts reached. Stopping Discord RPC.');
+    }
+}
+
+function initDiscord() {
+    if (presenceUpdateTimer) {
+        clearInterval(presenceUpdateTimer);
+        presenceUpdateTimer = null;
+    }
+
+    rpc.on('ready', () => {
+        log('Discord RPC connected successfully');
+        reconnectAttempts = 0;
+
+        updatePresence();
+
+        presenceUpdateTimer = setInterval(updatePresence, REFRESH_INTERVAL);
+    });
+
+    rpc.on('disconnected', () => {
+        log('Discord RPC disconnected');
+        handleDisconnection();
+    });
+
+    rpc.login({ clientId }).catch(error => {
+        log(`Discord RPC login error: ${error.message}`);
+        handleDisconnection();
+    });
+}
+
+function cleanupDiscordRPC() {
+    if (presenceUpdateTimer) {
+        clearInterval(presenceUpdateTimer);
+        presenceUpdateTimer = null;
+    }
+
+    if (rpc) {
+        rpc.clearActivity().catch(() => {});
+        rpc.destroy().catch(() => {});
+    }
+
+    IMAGE_CACHE.clear();
+    log('Discord RPC cleaned up');
+}
+
+function log(message) {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(`[${timestamp}] ${message}`);
 }
