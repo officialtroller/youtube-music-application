@@ -205,8 +205,16 @@ async function getPlayerData() {
             
             const artist = byline.split('•')[0]?.trim().replace(/["']/g, '') || 'Unknown Artist';
 
-            const durationMs = Math.floor((video.duration || 0) * 1000);
-            const positionMs = Math.floor((video.currentTime || 0) * 1000);
+            const timeInfoText = playerBar.querySelector('.time-info')?.textContent || '';
+            const [positionText, durationText] = timeInfoText.split(' / ').map(t => t.trim());
+
+            function timeToMs(timeStr) {
+                const parts = timeStr.split(':').map(Number);
+                return parts.reduce((acc, val) => acc * 60 + val, 0) * 1000;
+            }
+
+            const positionMs = timeToMs(positionText);
+            const durationMs = timeToMs(durationText);
             const isPlaying = !video.paused && !video.ended;
 
             let imageUrl = playerBar.querySelector('.image')?.getAttribute('src') || 'icon_512';
@@ -268,7 +276,7 @@ async function processImageUrl(imageUrl) {
     let processedUrl = imageUrl;
 
     if (imageUrl.includes('googleusercontent.com') || imageUrl.includes('ytimg.com')) {
-        processedUrl = imageUrl.split('=')[0] + '=s512-c-fcrop64=1,00005a57ffffa5a8-k-c0x00ffffff-no-nd-rj';
+        processedUrl = imageUrl.split('=')[0] + '=s512';
     }
 
     IMAGE_CACHE.set(imageUrl, processedUrl);
@@ -306,7 +314,6 @@ async function updatePresence() {
             details: playerData.title,
             state: `by ${playerData.artist}`,
             largeImageKey: processedImageUrl,
-            //largeImageText: playerData.artist,
             type: 2,
         };
 
