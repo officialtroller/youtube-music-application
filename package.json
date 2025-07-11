@@ -1,6 +1,6 @@
 {
     "name": "youtube-music",
-    "version": "2.2.0",
+    "version": "2.2.1",
     "description": "Youtube App with Discord RPC",
     "main": "index.js",
     "scripts": {
@@ -44,7 +44,8 @@
             "index.css",
             "preload.js",
             "icon.png",
-            "translations.json"
+            "translations.json",
+            "webview_pl.js"
         ],
         "win": {
             "target": [
