@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, globalShortcut, shell, ipcMain, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const DiscordRPC = require('discord-rpc');
 const path = require('path');
@@ -67,11 +67,11 @@ function log(message) {
 }
 
 async function createWindow() {
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
     log('Creating main window...');
     mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 720,
-        fullscreen: true,
+        width: width,
+        height: height,
         frame: false,
         icon: path.join(__dirname, 'icon.ico'),
         webPreferences: {
@@ -107,6 +107,7 @@ app.whenReady().then(async () => {
     initApp();
 
     await mainWindow.webContents.executeJavaScript("const webview = document.querySelector('webview');");
+    mainWindow.center();
 
     ipcMain.on('window-minimize', () => {
         mainWindow.minimize();
@@ -120,6 +121,25 @@ app.whenReady().then(async () => {
     ipcMain.on('window-close', () => {
         mainWindow.close(), rpc.destroy();
     });
+
+    ipcMain.on('goForward', async () => {
+        console.log('Go forward triggered');
+        const canGoForward = await mainWindow.webContents.executeJavaScript('webview?.canGoForward()');
+        if (canGoForward) {
+            console.log('Going forward in navigation history');
+            await mainWindow.webContents.executeJavaScript('webview?.goForward()');
+        } else console.log("Either something's wrong or there is no history to go forward to");
+    });
+
+    ipcMain.on('goBack', async () => {
+        console.log('Go back triggered');
+        const canGoBack = await mainWindow.webContents.executeJavaScript('webview?.canGoBack()');
+        if (canGoBack) {
+            console.log('Going back in navigation history');
+            await mainWindow.webContents.executeJavaScript('webview?.goBack()');
+        } else console.log("Either something's wrong or there is no history to go back to");
+    });
+
     const registeredShortcuts = {};
 
     ipcMain.on('set-hotkey', (event, { action, enabled, hotkey }) => {
@@ -170,6 +190,11 @@ app.whenReady().then(async () => {
             delete registeredShortcuts[action];
         }
     }
+});
+
+mainWindow.webContents.on('did-finish-load', async () => {
+    initDiscord();
+    await mainWindow.webContents.executeJavaScript("const webview = document.querySelector('webview');");
 });
 
 app.on('window-all-closed', () => {

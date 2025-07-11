@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.appendChild(closebtn);
 
         const info = document.createElement('p');
-        info.textContent = '© official_troller V2.1.2';
+        info.textContent = '© official_troller V2.2.0';
         Object.assign(info.style, {
             position: 'absolute',
             color: '#B3B3B3',
@@ -478,6 +478,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const webview = document.querySelector('webview');
+    webview.addEventListener('console-message', e => {
+        switch (e.message) {
+            case 'button_3_down':
+                ipcRenderer.send('goBack');
+                break;
+            case 'button_4_down':
+                ipcRenderer.send('goForward');
+                break;
+            default:
+                console.log(`Webview console message: ${e.message}`);
+        }
+    });
     const loadingOverlay = document.getElementById('loading-overlay');
     let initialLoadComplete = false;
 
@@ -543,6 +555,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.key === 'F11') {
             event.preventDefault();
             ipcRenderer.send('window-maximize');
+        }
+    });
+    document.addEventListener('mousedown', event => {
+        console.log('Mouse button clicked:', event.button);
+        if (event.button === 4) {
+            console.log('Back button clicked');
+            event.preventDefault();
+            ipcRenderer.send('goForward');
+        }
+        if (event.button === 3) {
+            console.log('Forward button clicked');
+            event.preventDefault();
+            ipcRenderer.send('goBack');
         }
     });
 });
