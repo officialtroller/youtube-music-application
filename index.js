@@ -89,7 +89,11 @@ async function createWindow() {
         return { action: 'deny' };
     });
 
-    log('Window created and configured successfully.');
+    mainWindow.webContents.on('did-finish-load', async () => {
+        log('Window created and configured successfully.');
+        initDiscord();
+        await mainWindow.webContents.executeJavaScript("const webview = document.querySelector('webview');");
+    });
     if (app.isPackaged && autoUpdateEnabled) autoUpdater.checkForUpdates();
 }
 
@@ -190,11 +194,6 @@ app.whenReady().then(async () => {
             delete registeredShortcuts[action];
         }
     }
-});
-
-mainWindow.webContents.on('did-finish-load', async () => {
-    initDiscord();
-    await mainWindow.webContents.executeJavaScript("const webview = document.querySelector('webview');");
 });
 
 app.on('window-all-closed', () => {
