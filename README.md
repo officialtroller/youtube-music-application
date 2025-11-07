@@ -2,6 +2,8 @@
 
 An Electron-powered desktop wrapper for YouTube Music with built-in Discord Rich Presence, global hotkeys, multi-language support, and a sleek custom UI.
 
+![GitHub release](https://img.shields.io/github/v/release/officialtroller/youtube-music-application)
+![Downloads](https://img.shields.io/github/downloads/officialtroller/youtube-music-application/total)
 > Built with ❤️ by [official_troller](https://github.com/officialtroller)
 
 ---
