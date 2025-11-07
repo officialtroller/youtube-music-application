@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 const clientId = '1295050706620907611';
+const AUTO_UPDATE_INTERVAL = 60 * 60 * 1000;
 const rpc = new DiscordRPC.Client({ transport: 'ipc' });
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 autoUpdater.autoDownload = false;
@@ -51,7 +52,7 @@ autoUpdater.on('update-downloaded', info => {
 
 setInterval(() => {
     if (app.isPackaged && autoUpdateEnabled) autoUpdater.checkForUpdates();
-}, 60 * 60 * 1000);
+}, AUTO_UPDATE_INTERVAL);
 
 function sendStatusToWindow(text, style) {
     if (mainWindow) {
@@ -63,7 +64,8 @@ function sendStatusToWindow(text, style) {
 let mainWindow;
 
 function log(message) {
-    console.log(`[${new Date().toISOString()}] ${message}`);
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    console.log(`[${timestamp}] ${message}`);
 }
 
 async function createWindow() {
@@ -100,7 +102,6 @@ async function createWindow() {
 async function initApp() {
     try {
         await createWindow();
-        initDiscord();
         log('Application initialized successfully.');
     } catch (error) {
         log(`Error during initialization: ${error.message}`);
@@ -109,17 +110,21 @@ async function initApp() {
 
 app.whenReady().then(async () => {
     initApp();
-
-    await mainWindow.webContents.executeJavaScript("const webview = document.querySelector('webview');");
-    mainWindow.center();
+    mainWindow.maximize();
 
     ipcMain.on('window-minimize', () => {
         mainWindow.minimize();
     });
 
     ipcMain.on('window-maximize', () => {
-        const isFullScreen = mainWindow.isFullScreen();
-        mainWindow.setFullScreen(!isFullScreen);
+        if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+        } else {
+            mainWindow.maximize();
+        }
+    });
+    ipcMain.on('window-fullscreen', () => {
+        mainWindow.setFullScreen(!mainWindow.isFullScreen());
     });
 
     ipcMain.on('window-close', () => {
@@ -161,7 +166,7 @@ app.whenReady().then(async () => {
             switch (action) {
                 case 'skip':
                     await mainWindow.webContents.executeJavaScript(`
-                        webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");
+                        const btn = webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");
                     `);
                     break;
                 case 'pause':
@@ -197,12 +202,14 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit(), rpc.destroy();
+    if (process.platform !== 'darwin') app.quit(), cleanupDiscordRPC();
 });
 
 app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
+ipcMain.handle('get-app-version', () => app.getVersion());
 
 let lastActivity = null;
 let lastPlayerState = null;
@@ -294,7 +301,10 @@ function shouldUpdatePresence(newData, oldData) {
 
 async function processImageUrl(imageUrl) {
     if (IMAGE_CACHE.has(imageUrl)) {
-        return IMAGE_CACHE.get(imageUrl);
+        const value = IMAGE_CACHE.get(imageUrl);
+        IMAGE_CACHE.delete(imageUrl);
+        IMAGE_CACHE.set(imageUrl, value);
+        return value;
     }
 
     let processedUrl = imageUrl;
@@ -381,7 +391,12 @@ function handleDisconnection() {
         log(`Discord RPC disconnected, attempting reconnect ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}...`);
 
         setTimeout(() => {
-            initDiscord();
+            rpc.login({ clientId }).then(() => {
+                log('Discord RPC reconnected successfully');
+                reconnectAttempts = 0;
+                updatePresence();
+                presenceUpdateTimer = setInterval(updatePresence, REFRESH_INTERVAL);
+            });
         }, RECONNECT_DELAY * reconnectAttempts);
     } else {
         log('Max reconnection attempts reached. Stopping Discord RPC.');
@@ -427,9 +442,4 @@ function cleanupDiscordRPC() {
 
     IMAGE_CACHE.clear();
     log('Discord RPC cleaned up');
-}
-
-function log(message) {
-    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-    console.log(`[${timestamp}] ${message}`);
 }

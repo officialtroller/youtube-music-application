@@ -4,6 +4,8 @@ const path = require('path');
 
 const translationFilePath = path.join(__dirname, 'translations.json');
 let translations = {};
+const FADE_DURATION = 300;
+const FADE_STEPS = 30;
 try {
     const fileContent = fs.readFileSync(translationFilePath, 'utf-8');
     translations = JSON.parse(fileContent);
@@ -22,24 +24,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsbtn = document.getElementById('settings-btn');
     let div = null;
 
-    function createSettingsMenu() {
+    async function createSettingsMenu() {
         div = document.createElement('div');
         div.classList.add('settingsmenu');
-        Object.assign(div.style, {
-            width: `${window.innerWidth / 2}px`,
-            height: `${window.innerHeight / 2}px`,
-        });
 
         document.getElementById('content').appendChild(div);
         fadeIn(div);
 
         const header = document.createElement('h2');
         header.textContent = 'Settings';
-        Object.assign(header.style, {
-            color: '#B3B3B3',
-            fontSize: '20px',
-            userSelect: 'none',
-        });
+        header.classList.add('settings-header');
         div.appendChild(header);
 
         const closebtn = document.createElement('button');
@@ -60,7 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
         div.appendChild(closebtn);
 
         const info = document.createElement('p');
-        info.textContent = '© official_troller V2.2.1';
+        const version = await ipcRenderer.invoke('get-app-version');
+        info.textContent = '© official_troller V' + version;
         Object.assign(info.style, {
             position: 'absolute',
             color: '#B3B3B3',
@@ -100,257 +95,92 @@ document.addEventListener('DOMContentLoaded', () => {
         fullautoupdate.appendChild(autoupdatelabel);
         settingsmenu.appendChild(fullautoupdate);
 
-        const fullinput = document.createElement('div');
-        fullinput.classList = 'settingsdiv';
+        function createHotkeyInput(action, labelText) {
+            const container = document.createElement('div');
+            container.classList = 'settingsdiv';
 
-        const inputlabel = document.createElement('span');
-        inputlabel.textContent = 'Skip Song';
-        Object.assign(inputlabel.style, {
-            color: 'white',
-            userSelect: 'none',
-        });
-
-        const hotkeyDisplay = document.createElement('div');
-        Object.assign(hotkeyDisplay.style, {
-            display: 'inline-block',
-            padding: '5px 10px',
-            marginLeft: '10px',
-            backgroundColor: 'white',
-            color: 'black',
-            borderRadius: '5px',
-            border: '1px solid #ccc',
-            cursor: 'pointer',
-            userSelect: 'none',
-            position: 'absolute',
-            right: '30px',
-        });
-        hotkeyDisplay.textContent = localStorage.getItem('skip') || 'Click to set hotkey';
-        const skipdel = document.createElement('i');
-        skipdel.classList = 'fas fa-trash-alt';
-        skipdel.style.position = 'absolute';
-        skipdel.style.right = '0';
-        skipdel.style.cursor = 'pointer';
-        skipdel.style.color = 'white';
-        skipdel.style.boxShadow = '0 0 5px rgba(0, 0, 0, 0.5)';
-        skipdel.addEventListener('click', () => {
-            localStorage.removeItem('skip');
-            hotkeyDisplay.textContent = 'Click to set hotkey';
-            ipcRenderer.send('set-hotkey', {
-                action: 'skip',
-                enabled: false,
-            });
-        });
-
-        let pressedKeys = new Set();
-
-        function formatHotkey(keys) {
-            const orderedKeys = Array.from(keys).sort((a, b) => {
-                const order = ['Control', 'Alt', 'Shift', 'Meta'];
-                return order.indexOf(a) - order.indexOf(b) || a.localeCompare(b);
-            });
-            return orderedKeys.join('+');
-        }
-
-        function setskipkeys(event) {
-            event.preventDefault();
-
-            const key = event.key === ' ' ? 'Space' : event.key;
-            pressedKeys.add(key === 'Control' ? 'Ctrl' : key);
-
-            hotkeyDisplay.textContent = formatHotkey(pressedKeys);
-        }
-
-        function finalizeskipkeys(event) {
-            event.preventDefault();
-
-            const hotkey = formatHotkey(pressedKeys);
-            localStorage.setItem('skip', hotkey);
-            hotkeyDisplay.textContent = hotkey;
-
-            ipcRenderer.send('set-hotkey', {
-                action: 'skip',
-                enabled: true,
-                hotkey: hotkey,
+            const label = document.createElement('span');
+            label.textContent = labelText;
+            Object.assign(label.style, {
+                color: 'white',
+                userSelect: 'none',
             });
 
-            pressedKeys.clear();
-            document.removeEventListener('keydown', setskipkeys);
-            document.removeEventListener('keyup', finalizeskipkeys);
-        }
-
-        hotkeyDisplay.addEventListener('click', () => {
-            hotkeyDisplay.textContent = 'Press keys...';
-            pressedKeys.clear();
-            document.addEventListener('keydown', setskipkeys);
-            document.addEventListener('keyup', finalizeskipkeys);
-        });
-
-        fullinput.appendChild(inputlabel);
-        fullinput.appendChild(hotkeyDisplay);
-        fullinput.appendChild(skipdel);
-
-        const fullpauseinput = document.createElement('div');
-        fullpauseinput.classList = 'settingsdiv';
-
-        const pauseinputlabel = document.createElement('span');
-        pauseinputlabel.textContent = 'Pause Song';
-        Object.assign(pauseinputlabel.style, {
-            color: 'white',
-            userSelect: 'none',
-        });
-
-        const pausehotkeyDisplay = document.createElement('div');
-        Object.assign(pausehotkeyDisplay.style, {
-            display: 'inline-block',
-            padding: '5px 10px',
-            marginLeft: '10px',
-            backgroundColor: 'white',
-            color: 'black',
-            borderRadius: '5px',
-            border: '1px solid #ccc',
-            cursor: 'pointer',
-            userSelect: 'none',
-            position: 'absolute',
-            right: '30px',
-        });
-        pausehotkeyDisplay.textContent = localStorage.getItem('pause') || 'Click to set hotkey';
-        const pausedel = document.createElement('i');
-        pausedel.classList = 'fas fa-trash-alt';
-        pausedel.style.position = 'absolute';
-        pausedel.style.right = '0';
-        pausedel.style.cursor = 'pointer';
-        pausedel.style.color = 'white';
-        pausedel.style.boxShadow = '0 0 5px rgba(0, 0, 0, 0.5)';
-        pausedel.addEventListener('click', () => {
-            localStorage.removeItem('pause');
-            pausehotkeyDisplay.textContent = 'Click to set hotkey';
-            ipcRenderer.send('set-hotkey', {
-                action: 'pause',
-                enabled: false,
+            const hotkeyDisplay = document.createElement('div');
+            Object.assign(hotkeyDisplay.style, {
+                display: 'inline-block',
+                padding: '5px 10px',
+                marginLeft: '10px',
+                backgroundColor: 'white',
+                color: 'black',
+                borderRadius: '5px',
+                border: '1px solid #ccc',
+                cursor: 'pointer',
+                userSelect: 'none',
+                position: 'absolute',
+                right: '40px',
             });
-        });
+            hotkeyDisplay.textContent = localStorage.getItem(action) || 'Click to set hotkey';
 
-        let pausedpressedKeys = new Set();
-
-        function setpausekeys(event) {
-            event.preventDefault();
-
-            const key = event.key === ' ' ? 'Space' : event.key;
-            pausedpressedKeys.add(key === 'Control' ? 'Ctrl' : key);
-
-            pausehotkeyDisplay.textContent = formatHotkey(pausedpressedKeys);
-        }
-
-        function finalizepausekeys(event) {
-            event.preventDefault();
-
-            const hotkey = formatHotkey(pausedpressedKeys);
-            localStorage.setItem('pause', hotkey);
-            pausehotkeyDisplay.textContent = hotkey;
-
-            ipcRenderer.send('set-hotkey', {
-                action: 'pause',
-                enabled: true,
-                hotkey: hotkey,
+            const deleteBtn = document.createElement('i');
+            deleteBtn.classList = 'fas fa-trash-alt';
+            deleteBtn.style.position = 'absolute';
+            deleteBtn.style.right = '10px';
+            deleteBtn.style.cursor = 'pointer';
+            deleteBtn.style.color = 'white';
+            deleteBtn.addEventListener('click', () => {
+                localStorage.removeItem(action);
+                hotkeyDisplay.textContent = 'Click to set hotkey';
+                ipcRenderer.send('set-hotkey', { action, enabled: false });
             });
 
-            pausedpressedKeys.clear();
-            document.removeEventListener('keydown', setpausekeys);
-            document.removeEventListener('keyup', finalizepausekeys);
-        }
+            let pressedKeys = new Set();
 
-        pausehotkeyDisplay.addEventListener('click', () => {
-            pausehotkeyDisplay.textContent = 'Press keys...';
-            pausedpressedKeys.clear();
-            document.addEventListener('keydown', setpausekeys);
-            document.addEventListener('keyup', finalizepausekeys);
-        });
+            function formatHotkey(keys) {
+                const orderedKeys = Array.from(keys).sort((a, b) => {
+                    const order = ['Control', 'Alt', 'Shift', 'Meta'];
+                    return order.indexOf(a) - order.indexOf(b) || a.localeCompare(b);
+                });
+                return orderedKeys.join('+');
+            }
 
-        fullpauseinput.appendChild(pauseinputlabel);
-        fullpauseinput.appendChild(pausehotkeyDisplay);
-        fullpauseinput.appendChild(pausedel);
+            function setKeys(event) {
+                event.preventDefault();
+                const key = event.key === ' ' ? 'Space' : event.key;
+                pressedKeys.add(key === 'Control' ? 'Ctrl' : key);
+                hotkeyDisplay.textContent = formatHotkey(pressedKeys);
+            }
 
-        const fullprevinput = document.createElement('div');
-        fullprevinput.classList = 'settingsdiv';
+            function finalizeKeys(event) {
+                event.preventDefault();
+                const hotkey = formatHotkey(pressedKeys);
+                localStorage.setItem(action, hotkey);
+                hotkeyDisplay.textContent = hotkey;
+                ipcRenderer.send('set-hotkey', { action, enabled: true, hotkey });
+                pressedKeys.clear();
+                document.removeEventListener('keydown', setKeys);
+                document.removeEventListener('keyup', finalizeKeys);
+            }
 
-        const previnputlabel = document.createElement('span');
-        previnputlabel.textContent = 'Previous Song';
-        Object.assign(previnputlabel.style, {
-            color: 'white',
-            userSelect: 'none',
-        });
-
-        const prevhotkeyDisplay = document.createElement('div');
-        Object.assign(prevhotkeyDisplay.style, {
-            display: 'inline-block',
-            padding: '5px 10px',
-            marginLeft: '10px',
-            backgroundColor: 'white',
-            color: 'black',
-            borderRadius: '5px',
-            border: '1px solid #ccc',
-            cursor: 'pointer',
-            userSelect: 'none',
-            position: 'absolute',
-            right: '30px',
-        });
-        prevhotkeyDisplay.textContent = localStorage.getItem('previous') || 'Click to set hotkey';
-        const prevdel = document.createElement('i');
-        prevdel.classList = 'fas fa-trash-alt';
-        prevdel.style.position = 'absolute';
-        prevdel.style.right = '0';
-        prevdel.style.cursor = 'pointer';
-        prevdel.style.color = 'white';
-        prevdel.style.boxShadow = '0 0 5px rgba(0, 0, 0, 0.5)';
-        prevdel.addEventListener('click', () => {
-            localStorage.removeItem('previous');
-            prevhotkeyDisplay.textContent = 'Click to set hotkey';
-            ipcRenderer.send('set-hotkey', {
-                action: 'previous',
-                enabled: false,
-            });
-        });
-
-        let prevpressedKeys = new Set();
-
-        function setprevkeys(event) {
-            event.preventDefault();
-
-            const key = event.key === ' ' ? 'Space' : event.key;
-            prevpressedKeys.add(key === 'Control' ? 'Ctrl' : key);
-
-            prevhotkeyDisplay.textContent = formatHotkey(prevpressedKeys);
-        }
-
-        function finalizeprevkeys(event) {
-            event.preventDefault();
-
-            const hotkey = formatHotkey(prevpressedKeys);
-            localStorage.setItem('previous', hotkey);
-            prevhotkeyDisplay.textContent = hotkey;
-
-            ipcRenderer.send('set-hotkey', {
-                action: 'previous',
-                enabled: true,
-                hotkey: hotkey,
+            hotkeyDisplay.addEventListener('click', () => {
+                hotkeyDisplay.textContent = 'Press keys...';
+                pressedKeys.clear();
+                document.addEventListener('keydown', setKeys);
+                document.addEventListener('keyup', finalizeKeys);
             });
 
-            prevpressedKeys.clear();
-            document.removeEventListener('keydown', setprevkeys);
-            document.removeEventListener('keyup', finalizeprevkeys);
+            container.appendChild(label);
+            container.appendChild(hotkeyDisplay);
+            container.appendChild(deleteBtn);
+
+            return { container, label };
         }
-
-        prevhotkeyDisplay.addEventListener('click', () => {
-            prevhotkeyDisplay.textContent = 'Press keys...';
-            prevpressedKeys.clear();
-            document.addEventListener('keydown', setprevkeys);
-            document.addEventListener('keyup', finalizeprevkeys);
-        });
-
-        fullprevinput.appendChild(previnputlabel);
-        fullprevinput.appendChild(prevhotkeyDisplay);
-        fullprevinput.appendChild(prevdel);
-
+        const skip_SongELM = createHotkeyInput('skip', 'Skip Song');
+        const pause_SongELM = createHotkeyInput('pause', 'Pause Song');
+        const prev_SongELM = createHotkeyInput('previous', 'Previous Song');
+        settingsmenu.appendChild(skip_SongELM.container);
+        settingsmenu.appendChild(pause_SongELM.container);
+        settingsmenu.appendChild(prev_SongELM.container);
         const fulllang = document.createElement('div');
         fulllang.classList = 'settingsdiv';
 
@@ -371,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const languageselect = document.createElement('select');
         languageselect.style.position = 'absolute';
-        languageselect.style.right = '0';
+        languageselect.style.right = '10px';
         const languages = [
             { value: 'en', text: 'English - English' },
             { value: 'ru', text: 'Русский - Russian' },
@@ -408,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         fulllang.appendChild(languageselect);
+        settingsmenu.appendChild(fulllang);
         var updatebtn = document.createElement('button');
         updatebtn.textContent = 'Check for Updates';
         updatebtn.style.padding = '6px 10px';
@@ -421,22 +252,20 @@ document.addEventListener('DOMContentLoaded', () => {
         updatebtn.style.fontFamily = 'Play, Verdana';
         updatebtn.style.border = '0';
         updatebtn.style.borderRadius = '20px';
+        updatebtn.style.left = '6px';
+        updatebtn.style.position = 'fixed';
         updatebtn.onclick = function () {
             ipcRenderer.send('check-for-updates');
         };
-        settingsmenu.appendChild(fullinput);
-        settingsmenu.appendChild(fullpauseinput);
-        settingsmenu.appendChild(fullprevinput);
-        settingsmenu.appendChild(fulllang);
         settingsmenu.appendChild(updatebtn);
         updateUI(localStorage.getItem('lang'));
         function updateUI(lang) {
             langue.textContent = getTranslation('Language', lang);
             header.textContent = getTranslation('Settings', lang);
             autoupdatespan.textContent = getTranslation('Auto-Update', lang);
-            inputlabel.textContent = getTranslation('Skip Song', lang);
-            pauseinputlabel.textContent = getTranslation('Pause Song', lang);
-            previnputlabel.textContent = getTranslation('Previous Song', lang);
+            skip_SongELM.label.textContent = getTranslation('Skip Song', lang);
+            pause_SongELM.label.textContent = getTranslation('Pause Song', lang);
+            prev_SongELM.label.textContent = getTranslation('Previous Song', lang);
         }
         function fadeIn(element) {
             let opacity = 0;
@@ -444,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 opacity += 0.1;
                 element.style.opacity = opacity;
                 if (opacity >= 1) clearInterval(interval);
-            }, 30);
+            }, FADE_STEPS);
         }
 
         function fadeOutAndRemove(element) {
@@ -457,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     element.remove();
                     div = null;
                 }
-            }, 30);
+            }, FADE_STEPS);
         }
     }
 
@@ -486,16 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'button_4_down':
                 ipcRenderer.send('goForward');
                 break;
-            default:
-                console.log(`Webview console message: ${e.message}`);
         }
     });
     const loadingOverlay = document.getElementById('loading-overlay');
     let initialLoadComplete = false;
-
-    webview.addEventListener('page-title-updated', event => {
-        ipcRenderer.send('page-title-updated', event.title);
-    });
 
     webview.addEventListener('did-start-loading', () => {
         if (!initialLoadComplete) {
@@ -510,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 loadingOverlay.style.display = 'none';
                 loadingOverlay.style.opacity = '1';
-            }, 300);
+            }, FADE_DURATION);
         }
         const pauseHotkey = localStorage.getItem('pause');
         const skipHotkey = localStorage.getItem('skip');
@@ -554,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', event => {
         if (event.key === 'F11') {
             event.preventDefault();
-            ipcRenderer.send('window-maximize');
+            ipcRenderer.send('window-fullscreen');
         }
     });
     document.addEventListener('mousedown', event => {

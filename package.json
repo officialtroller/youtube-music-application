@@ -1,6 +1,6 @@
 {
     "name": "youtube-music",
-    "version": "2.2.1",
+    "version": "2.3.0",
     "description": "Youtube App with Discord RPC",
     "main": "index.js",
     "scripts": {
@@ -26,6 +26,7 @@
     "author": "official_troller",
     "license": "ISC",
     "dependencies": {
+        "d-js-rpc": "^1.1.0",
         "discord-rpc": "^4.0.1",
         "electron-updater": "^6.3.9"
     },
