@@ -166,7 +166,7 @@ app.whenReady().then(async () => {
             switch (action) {
                 case 'skip':
                     await mainWindow.webContents.executeJavaScript(`
-                        const btn = webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");
+                        webview?.executeJavaScript("document.querySelector('ytmusic-player-bar').querySelector('.next-button')?.click();");
                     `);
                     break;
                 case 'pause':
