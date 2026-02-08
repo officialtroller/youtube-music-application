@@ -1,6 +1,6 @@
 const { app, BrowserWindow, globalShortcut, shell, ipcMain, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
-const DiscordRPC = require('discord-rpc');
+const DiscordRPC = require('d-js-rpc');
 const path = require('path');
 const fs = require('fs');
 
@@ -127,8 +127,10 @@ app.whenReady().then(async () => {
         mainWindow.setFullScreen(!mainWindow.isFullScreen());
     });
 
-    ipcMain.on('window-close', () => {
-        mainWindow.close(), rpc.destroy();
+    ipcMain.on('window-close', async () => {
+        await cleanupDiscordRPC();
+        mainWindow.close();
+        app.quit();
     });
 
     ipcMain.on('goForward', async () => {
@@ -201,8 +203,11 @@ app.whenReady().then(async () => {
     }
 });
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit(), cleanupDiscordRPC();
+app.on('window-all-closed', async () => {
+    await cleanupDiscordRPC();
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
 });
 
 app.on('activate', function () {
@@ -429,17 +434,21 @@ function initDiscord() {
     });
 }
 
-function cleanupDiscordRPC() {
+async function cleanupDiscordRPC() {
     if (presenceUpdateTimer) {
         clearInterval(presenceUpdateTimer);
         presenceUpdateTimer = null;
     }
 
     if (rpc) {
-        rpc.clearActivity().catch(() => {});
-        rpc.destroy().catch(() => {});
+        try {
+            await rpc.clearActivity();
+            await rpc.destroy();
+            log('Discord RPC cleaned up successfully');
+        } catch (error) {
+            log(`Error during RPC cleanup: ${error.message}`);
+        }
     }
 
     IMAGE_CACHE.clear();
-    log('Discord RPC cleaned up');
 }
